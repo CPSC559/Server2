@@ -18,8 +18,8 @@ module.exports = function chatroomCleanup() {
                 const chatroomExists = chatrooms.some(chatroom => chatroom.Password === message.ChatroomID);
                 if (!chatroomExists)
                 {
+                    console.log(`Message ${message._id} was deleted because chat room ${message.ChatroomID} no longer exists.`);
                     await Message.findByIdAndDelete(message._id);
-                    console.log(`Message ${message._id} was deleted as its chat room no longer exists.`);
                 }
             }
 
@@ -35,9 +35,9 @@ module.exports = function chatroomCleanup() {
                     if (minutesDifference > 10)
                     {
                         // Delete chatroom if the last message is from more than 10 minutes ago
-                        await Message.deleteMany({ ChatroomID: chatroom._id });
+                        await Message.deleteMany({ ChatroomID: chatroom.Password });
                         await Chatroom.findByIdAndDelete(chatroom._id);
-                        console.log(`Chatroom ${chatroom._id} was deleted for inactivity.`);
+                        console.log(`Chatroom ${chatroom.Password} was deleted for inactivity.`);
                     }
                 }
             }
