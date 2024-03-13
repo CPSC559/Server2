@@ -1,11 +1,11 @@
   services:
     server:
-      container_name: server1
-      image: server1
+      container_name: server2
+      image: server2
       build:
         context: .
         dockerfile: DockerFile
       volumes:
         - /node_modules
       ports:
-        - 4000:4000
+        - 4001:4001
