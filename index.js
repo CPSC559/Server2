@@ -80,6 +80,18 @@ server.listen(port, () => console.log(`Listening on port ${port}`));
 
 chatroomCleanup();
 
+const generateColor = (publicKey) => {
+  // Calculate a hash code to create a color from the public key
+  const hashCode = publicKey.split("").reduce((a, b) => {
+    a = (a << 5) - a + b.charCodeAt(0);
+    return a & a;
+  }, 0);
+
+  const hue = hashCode % 360;
+
+  return `hsl(${hue}, 70%, 86%)`;
+};
+
 //Example for how to call the following endpoint http://localhost:4000/chatrooms
 //Endpoint can be used to get all chatrooms
 app.get("/chatrooms", async (req, res) => {
@@ -122,6 +134,7 @@ app.post("/message", async (req, res) => {
   try {
     const serializedEncryptedMessage = req.body.cipher;
     const serializedRecipients = req.body.recipients;
+    const clientColor = generateColor(senderBase64PublicKey);
 
     const message = await Message.create({
       Cipher: serializedEncryptedMessage,
@@ -161,6 +174,7 @@ app.post("/message", async (req, res) => {
         io.to(recipientSocketId).emit("new_message", {
           serializedEncryptedMessage,
           serializedEncryptedSymmetricKey,
+          clientColor: clientColor,
         });
       } else {
         console.log(publicKeyToSocketIdMap);
