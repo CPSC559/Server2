@@ -83,6 +83,18 @@ server.listen(port, () => console.log(`Listening on port ${port}`));
 
 chatroomCleanup();
 
+const generateColor = (publicKey) => {
+  // Calculate a hash code to create a color from the public key
+  const hashCode = publicKey.split("").reduce((a, b) => {
+    a = (a << 5) - a + b.charCodeAt(0);
+    return a & a;
+  }, 0);
+
+  const hue = hashCode % 360;
+
+  return `hsl(${hue}, 70%, 86%)`;
+};
+
 //Example for how to call the following endpoint http://localhost:4000/chatrooms
 //Endpoint can be used to get all chatrooms
 app.get("/chatrooms", async (req, res) => {
@@ -126,11 +138,12 @@ app.post("/message", async (req, res) => {
     const serializedEncryptedMessage = req.body.cipher;
     const serializedRecipients = req.body.recipients;
     const senderBase64PublicKey = req.body.senderBase64PublicKey
+    const clientColor = generateColor(senderBase64PublicKey);
 
     const message = await Message.create({
       Cipher: serializedEncryptedMessage,
       // sender should be inferred through socket, what happens if sender pretends to be someone else?
-      Sender: req.body.senderBase64PublicKey,
+      Sender: senderBase64PublicKey,
       ChatroomID: req.body.currChatroom,
       MessageIndex: chatroomIndices[req.body.currChatroom]
     });
@@ -142,7 +155,7 @@ app.post("/message", async (req, res) => {
           .post(`${server}/message`, {
             cipher: serializedEncryptedMessage,
             recipients: serializedRecipients,
-            senderBase64PublicKey: req.body.senderBase64PublicKey,
+            senderBase64PublicKey: senderBase64PublicKey,
             currChatroom: req.body.currChatroom,
           })
           .then((response) => {
@@ -166,6 +179,7 @@ app.post("/message", async (req, res) => {
         io.to(recipientSocketId).emit("new_message", {
           serializedEncryptedMessage,
           serializedEncryptedSymmetricKey,
+          clientColor: clientColor,
           messageIndex: chatroomIndices[req.body.currChatroom]
         });
       } else {
