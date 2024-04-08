@@ -16,16 +16,31 @@ const publicKeyToSocketIdMap = {};
 
 // chatroom message index counter
 const chatroomIndices = {};
-
+const id = 4001;
+var leader=0;
 const app = express();
 
 const otherServers = ["http://localhost:4000", "http://localhost:4002"];
-
+const pid =2;
 //Remove cors
 app.use(cors());
 app.use(express.json());
 
 const server = http.createServer(app);
+const response = axios.post(`${otherServers[1]}/election`, {
+    id: id
+}).then(response => {
+  console.log(response);
+})
+.catch((error) => {
+console.error(`Failed to send message to server: ${server}`, error);
+leader = id;
+const response = axios.post(`${otherServers[0]}/leader`, {
+    leader: id
+}).catch((error) => {
+    console.error(`Failed to send message to server: ${server}`, error);
+});
+});
 const io = socketIo(server, {
   cors: {
     origin: ["http://localhost:3000", "http://localhost:3006"], // Allow only the React client to connect
@@ -35,7 +50,21 @@ const io = socketIo(server, {
 
 io.on("connection", (socket) => {
   console.log("Client connected");
-
+  if(leader!=id){
+    const response = axios.post(`${otherServers[1]}/election`, {
+        id: id
+    }).then(response => {
+      console.log(response);
+      socket.disconnect();
+  })
+  .catch((error) => {
+    console.error(`Failed to send message to server: ${server}`, error);
+    leader = id;
+    const response = axios.post(`${otherServers[0]}/leader`, {
+        leader: id
+    });
+  });
+}
   socket.on("ping", () => {
     console.log("Received ping from client. Sending pong...");
     socket.emit("pong");
@@ -94,6 +123,26 @@ const generateColor = (publicKey) => {
 
   return `hsl(${hue}, 70%, 86%)`;
 };
+
+app.post("/election",  async (req, res) => {
+  mid = req.body.id 
+  if (mid<id)
+  {
+   res.send("Ok");
+  }
+  else{
+    console.log(id)
+    console.log(mid);
+    io.disconnectSockets();
+  }
+});
+
+app.post("/leader",  async (req, res) => {
+  lead = req.body.leader 
+  leader= lead;
+  io.disconnectSockets();
+});
+
 
 //Example for how to call the following endpoint http://localhost:4000/chatrooms
 //Endpoint can be used to get all chatrooms
