@@ -10,6 +10,7 @@ const serializationUtils = require("./serializationUtils");
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const cors = require("cors");
 const axios = require("axios");
+const { uniqueNamesGenerator, adjectives, colors, animals } = require('unique-names-generator');
 
 //Variable to store socket ID mappings
 const publicKeyToSocketIdMap = {};
@@ -124,6 +125,31 @@ const generateColor = (publicKey) => {
   return `hsl(${hue}, 70%, 86%)`;
 };
 
+function generateIndexFromHash(hash, dictionarySize) {
+  // Taking a slice of the hash to get a smaller number and converting it to an integer
+  if(hash < 0) {
+    hash = hash * -1;
+  }
+  // Using modulo to ensure the index fits within the dictionary size
+  return hash % dictionarySize;
+}
+
+const generateUserName = (publicKey) => {
+  const hashCode = publicKey.split("").reduce((a, b) => {
+    a = (a << 5) - a + b.charCodeAt(0);
+    return a & a;
+  }, 0);
+  const adjectiveIndex = generateIndexFromHash(hashCode, adjectives.length);
+  const animalIndex = generateIndexFromHash(hashCode, animals.length);
+
+  const adjective = adjectives[adjectiveIndex];
+  const animal = animals[animalIndex];
+
+  // Combine and format the words to form the username
+  return `${adjective.charAt(0).toUpperCase() + adjective.slice(1)}${animal.charAt(0).toUpperCase() + animal.slice(1)}`;
+}
+
+
 app.post("/election",  async (req, res) => {
   mid = req.body.id 
   if (mid<id)
@@ -188,6 +214,7 @@ app.post("/message", async (req, res) => {
     const serializedRecipients = req.body.recipients;
     const senderBase64PublicKey = req.body.senderBase64PublicKey
     const clientColor = generateColor(senderBase64PublicKey);
+    const userName = generateUserName(senderBase64PublicKey);
 
     const message = await Message.create({
       Cipher: serializedEncryptedMessage,
@@ -228,7 +255,8 @@ app.post("/message", async (req, res) => {
         io.to(recipientSocketId).emit("new_message", {
           serializedEncryptedMessage,
           serializedEncryptedSymmetricKey,
-          clientColor: clientColor,
+          clientColor: clientColor,          
+          userName: userName,
           messageIndex: chatroomIndices[req.body.currChatroom]
         });
       } else {
